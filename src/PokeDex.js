@@ -2,14 +2,27 @@ import "./App.css";
 import { useState, useEffect } from "react";
 import ReactLoading from "react-loading";
 import axios from "axios";
-import { Row, Col, Card, Button, ButtonGroup } from "react-bootstrap";
+import {
+  Row,
+  Col,
+  Card,
+  Button,
+  ButtonGroup,
+  Badge,
+  Table,
+} from "react-bootstrap";
 import Modal from "react-modal";
 import Heading from "./Components/Meta/Heading";
 import {
   FcAlphabeticalSortingAz,
   FcAlphabeticalSortingZa,
 } from "react-icons/fc";
-import { BiChevronLeft, BiChevronRight } from "react-icons/bi";
+import { BiChevronLeft, BiChevronRight, BiX, BiDownload } from "react-icons/bi";
+import PokemonImg from "./Components/Meta/PokemonImg";
+import BaseStats from "./Components/PokeDex/BaseStats";
+import html2canvas from "html2canvas";
+import pdfMake from "pdfmake/build/pdfmake";
+
 
 function PokeDex() {
   const [pokemons, setPokemons] = useState({
@@ -33,16 +46,26 @@ function PokeDex() {
 
   const customStyles = {
     content: {
-      top: "50%",
-      left: "50%",
-      right: "auto",
-      bottom: "auto",
-      marginRight: "-50%",
-      transform: "translate(-50%, -50%)",
-      background: "black",
-      color: "white",
+      position: "relative",
+      backgroundColor: "#FFF",
+      padding: "1rem",
+      margin: "auto",
+      zIndex: "1000",
+      width: "45%",
+      borderRadius: ".5em",
     },
-    overlay: { backgroundColor: "grey" },
+    overlay: {
+      position: "fixed",
+      display: "flex",
+      justifyContent: "center",
+      top: "0",
+      left: "0",
+      width: "100%",
+      height: "100%",
+      backgroundColor: "rgba(0,0,0, .8)",
+      zIndex: "1000",
+      overflowY: "auto",
+    },
   };
 
   useEffect(() => {
@@ -103,6 +126,23 @@ function PokeDex() {
       lastData: lastResCount,
     }));
   };
+
+
+  const generatePDF = () => {
+
+    html2canvas(document.getElementById("generatefile"), { logging: true, letterRendering: 1, allowTaint: false, useCORS: true }).then(canvas => {
+      var data = canvas.toDataURL();
+      var pdfExportSetting = {
+        content: [
+          {
+            image: data,
+            width: 500
+          }
+        ]
+      };
+      pdfMake.createPdf(pdfExportSetting).download("pokemon.pdf");
+    });
+  }
 
   return (
     <div>
@@ -166,7 +206,7 @@ function PokeDex() {
                         onClick={() => getMoreDetails(name, url)}
                       >
                         <Card.Body>
-                          <Card.Title className="text-capitalize">
+                          <Card.Title>
                             <Heading
                               content={name}
                               design="h4 text-capitalize text-center text-dark"
@@ -224,25 +264,103 @@ function PokeDex() {
         <Modal
           isOpen={pokemonDetail.isModalOpen}
           contentLabel={pokemonDetail.name || ""}
+          ariaHideApp={false}
           onRequestClose={() => {
-            setPokemonDetail(null);
+            setPokemonDetail({
+              isModalOpen: false,
+              name: "",
+              url: "",
+              data: "",
+            });
           }}
           style={customStyles}
+
         >
           <div>
-            Requirement:
-            <ul>
-              <li>show the sprites front_default as the pokemon image</li>
-              <li>
-                Show the stats details - only stat.name and base_stat is
-                required in tabular format
-              </li>
-              <li>Create a bar chart based on the stats above</li>
-              <li>
-                Create a buttton to download the information generated in this
-                modal as pdf. (images and chart must be included)
-              </li>
-            </ul>
+            <div className="position-absolute top-0 end-0">
+              <BiX
+                className="text-dark bg-light rounded-circle icon iconX"
+                onClick={() => {
+                  setPokemonDetail({
+                    isModalOpen: false,
+                    name: "",
+                    url: "",
+                    data: "",
+                  });
+                }}
+              />
+            </div>
+            <div id="generatefile">
+            <Row className="mx-auto text-end bg-dark justify-content-md-center rounded p-3">
+              <Col sm={2}>
+                <PokemonImg
+                  link={pokemonDetail.data.sprites.front_default}
+                  design="rounded-circle w-100 mx-auto bg-light p-2 my-2"
+                />
+              </Col>
+              <Col sm={8} className="text-start">
+                <Heading
+                  content={pokemonDetail.name}
+                  design="h2 pt-2 rounded text-capitalize"
+                />
+                <div className="text-light">
+                  {pokemonDetail.data.stats.map((statDetail, index) => {
+                    const statName = statDetail.stat.name;
+                    return (
+                      <Badge
+                        bg="light"
+                        text="dark"
+                        key={index}
+                        className="me-1"
+                      >
+                        {statName}
+                      </Badge>
+                    );
+                  })}
+                </div>
+              </Col>
+            </Row>
+            <Row className=" m-3">
+              <Heading content="Base Stat" design="h6" />
+              <Table
+                striped
+                bordered
+                hover
+                size="sm"
+                responsive
+                className="text-center"
+              >
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Name</th>
+                    <th>Base Stat</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pokemonDetail.data.stats.map((statDetail, index) => {
+                    const statName = statDetail.stat.name;
+                    const statBase = statDetail.base_stat;
+                    return (
+                      <tr key={index}>
+                        <td>{index + 1}</td>
+                        <td>{statName}</td>
+                        <td>{statBase}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </Table>
+            </Row>
+            <Row>
+              <BaseStats chartData={pokemonDetail.data.stats} />
+            </Row>
+            </div>
+            <Row className="mx-auto justify-content-md-center">
+              <Col sm={3}>
+              <Button onClick={generatePDF} ><BiDownload className="icon mx-0"/> Download</Button>
+              </Col>
+            </Row>
           </div>
         </Modal>
       )}
